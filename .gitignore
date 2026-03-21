@@ -27,3 +27,6 @@ node_modules/
 .env.test
 .env.production
 .env.local
+
+# Secrets
+firebase-key.json
