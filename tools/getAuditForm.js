@@ -9,6 +9,43 @@ function readValue(value) {
     return text.length ? text : null;
 }
 
+function normalizeList(value) {
+    return Array.isArray(value)
+        ? value
+            .map((item) => readValue(item))
+            .filter(Boolean)
+        : [];
+}
+
+function normalizeActions(value) {
+    return normalizeList(value).map((action) => action.toLowerCase());
+}
+
+function buildTemplateActions(actions, templatesByType) {
+    return {
+        email: {
+            action_listed: actions.includes("email"),
+            available: actions.includes("email") && templatesByType.email.length > 0,
+            template_count: templatesByType.email.length,
+            templates: templatesByType.email
+        },
+        sms: {
+            action_listed: actions.includes("sms"),
+            available: actions.includes("sms") && templatesByType.sms.length > 0,
+            template_count: templatesByType.sms.length,
+            templates: templatesByType.sms
+        },
+        whatsapp: {
+            action_listed: actions.includes("whatsapp call"),
+            available:
+                actions.includes("whatsapp call") &&
+                templatesByType.whatsapp.length > 0,
+            template_count: templatesByType.whatsapp.length,
+            templates: templatesByType.whatsapp
+        }
+    };
+}
+
 function buildSummary(secA, secB) {
     const secAFields = Array.isArray(secA) ? secA : [];
     const secBBlocks = Array.isArray(secB) ? secB : [];
@@ -100,6 +137,15 @@ module.exports = async (args = {}) => {
         const responseData = response.data?.data || {};
         const secA = Array.isArray(responseData.sec_a) ? responseData.sec_a : [];
         const secB = Array.isArray(responseData.sec_b) ? responseData.sec_b : [];
+        const smsTemplates = normalizeList(responseData.sms_templates);
+        const emailTemplates = normalizeList(responseData.email_templates);
+        const whatsappTemplates = normalizeList(responseData.whatsapp_templates);
+        const rawActions = normalizeActions(responseData.actions);
+        const templateActions = buildTemplateActions(rawActions, {
+            email: emailTemplates,
+            sms: smsTemplates,
+            whatsapp: whatsappTemplates
+        });
 
         return {
             success: true,
@@ -124,6 +170,11 @@ module.exports = async (args = {}) => {
                 trans_unique_id: responseData.trans_unique_id ?? null,
                 ticket_id: responseData.ticket_id ?? null
             },
+            raw_actions: rawActions,
+            template_actions: templateActions,
+            sms_templates: smsTemplates,
+            email_templates: emailTemplates,
+            whatsapp_templates: whatsappTemplates,
             summary: buildSummary(secA, secB),
             message: "Audit form fetched successfully"
         };
